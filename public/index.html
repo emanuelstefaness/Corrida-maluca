@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>🏁 Corrida Maluca - Placar</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { 
+			--bg: #0a0e1a; 
+			--panel: #1a1f2e; 
+			--muted: #8b95a6; 
+			--accent: #ff6b35; 
+			--gold: #ffd700;
+			--silver: #c0c0c0;
+			--bronze: #cd7f32;
+			--track: #2a2d3a;
+		}
+		* { box-sizing: border-box; }
+		body { 
+			margin:0; 
+			font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; 
+			background: radial-gradient(ellipse at top, #1a1f2e 0%, #0a0e1a 70%);
+			color:#e6eaf2; 
+			min-height: 100vh;
+			overflow-x: hidden;
+		}
+		
+		/* Animações de fundo */
+		body::before {
+			content: '';
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: 
+				radial-gradient(circle at 20% 80%, rgba(255, 107, 53, 0.1) 0%, transparent 50%),
+				radial-gradient(circle at 80% 20%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+				radial-gradient(circle at 40% 40%, rgba(192, 192, 192, 0.05) 0%, transparent 50%);
+			pointer-events: none;
+			z-index: -1;
+		}
+		
+		header { 
+			padding: 24px 16px; 
+			text-align: center;
+			position: relative;
+		}
+		h1 { 
+			margin:0; 
+			font-size: clamp(24px, 5vw, 36px); 
+			font-weight: 800;
+			letter-spacing: 1px;
+			background: linear-gradient(45deg, #ff6b35, #ffd700, #ff6b35);
+			background-size: 200% 200%;
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			background-clip: text;
+			animation: gradientShift 3s ease-in-out infinite;
+		}
+		@keyframes gradientShift {
+			0%, 100% { background-position: 0% 50%; }
+			50% { background-position: 100% 50%; }
+		}
+		
+		.subtitle {
+			margin-top: 8px;
+			color: var(--muted);
+			font-size: 16px;
+			font-weight: 400;
+		}
+		
+		.container { max-width: 1200px; margin: 0 auto; padding: 0 16px 32px; }
+		
+		/* Pódio */
+		.podium-container {
+			margin: 32px 0;
+			display: flex;
+			justify-content: center;
+			align-items: end;
+			gap: 16px;
+			min-height: 200px;
+		}
+		
+		.podium-step {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			position: relative;
+			animation: podiumAppear 0.8s ease-out;
+		}
+		
+		@keyframes podiumAppear {
+			from { opacity: 0; transform: translateY(50px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+		
+		.podium-step.first { order: 2; }
+		.podium-step.second { order: 1; }
+		.podium-step.third { order: 3; }
+		
+		.podium-car {
+			width: 80px;
+			height: 80px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 24px;
+			font-weight: 700;
+			margin-bottom: 12px;
+			position: relative;
+			box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+			animation: carFloat 2s ease-in-out infinite;
+		}
+		
+		@keyframes carFloat {
+			0%, 100% { transform: translateY(0px); }
+			50% { transform: translateY(-5px); }
+		}
+		
+		.podium-car.first { 
+			background: linear-gradient(135deg, var(--gold), #ffed4e);
+			color: #000;
+			animation-delay: 0s;
+		}
+		.podium-car.second { 
+			background: linear-gradient(135deg, var(--silver), #e8e8e8);
+			color: #000;
+			animation-delay: 0.2s;
+		}
+		.podium-car.third { 
+			background: linear-gradient(135deg, var(--bronze), #daa520);
+			color: #fff;
+			animation-delay: 0.4s;
+		}
+		
+		.podium-base {
+			background: linear-gradient(180deg, var(--track), #1a1f2e);
+			border: 2px solid rgba(255,255,255,0.1);
+			border-radius: 8px 8px 0 0;
+			position: relative;
+		}
+		
+		.podium-base.first { width: 100px; height: 120px; }
+		.podium-base.second { width: 90px; height: 100px; }
+		.podium-base.third { width: 80px; height: 80px; }
+		
+		.podium-position {
+			position: absolute;
+			top: -30px;
+			left: 50%;
+			transform: translateX(-50%);
+			font-size: 18px;
+			font-weight: 800;
+			text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+		}
+		
+		.podium-name {
+			position: absolute;
+			bottom: -25px;
+			left: 50%;
+			transform: translateX(-50%);
+			font-size: 14px;
+			font-weight: 600;
+			text-align: center;
+			max-width: 100px;
+		}
+		
+		.podium-time {
+			position: absolute;
+			bottom: -45px;
+			left: 50%;
+			transform: translateX(-50%);
+			font-size: 12px;
+			color: var(--muted);
+		}
+		
+		/* Ranking completo */
+		.ranking-section {
+			margin-top: 48px;
+		}
+		
+		.section-title {
+			font-size: 24px;
+			font-weight: 700;
+			margin-bottom: 20px;
+			text-align: center;
+			color: #fff;
+		}
+		
+		.panel { 
+			background: linear-gradient(135deg, var(--panel), #1e2332); 
+			border: 1px solid rgba(255,255,255,0.08); 
+			border-radius: 20px; 
+			padding: 24px; 
+			box-shadow: 
+				0 20px 40px rgba(0,0,0,0.4), 
+				inset 0 1px 0 rgba(255,255,255,0.06);
+			backdrop-filter: blur(10px);
+		}
+		
+		.table { 
+			width:100%; 
+			border-collapse: collapse; 
+		}
+		.table th, .table td { 
+			padding: 16px 12px; 
+			text-align:left; 
+			border-bottom:1px solid rgba(255,255,255,0.08); 
+		}
+		.table th { 
+			font-weight:700; 
+			color:#fff;
+			font-size: 16px;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+		.table tr:hover {
+			background: rgba(255,255,255,0.02);
+		}
+		
+		.position-badge {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 32px;
+			height: 32px;
+			border-radius: 50%;
+			font-weight: 700;
+			font-size: 14px;
+		}
+		
+		.position-badge.first { background: var(--gold); color: #000; }
+		.position-badge.second { background: var(--silver); color: #000; }
+		.position-badge.third { background: var(--bronze); color: #fff; }
+		.position-badge.other { background: rgba(255,255,255,0.1); color: #fff; }
+		
+		.car-badge { 
+			display:inline-flex; 
+			align-items:center; 
+			gap:12px; 
+			padding:8px 16px; 
+			background: rgba(255,255,255,0.08); 
+			border-radius:25px;
+			border: 1px solid rgba(255,255,255,0.1);
+		}
+		.car-color { 
+			width:16px; 
+			height:16px; 
+			border-radius:50%; 
+			box-shadow: 0 0 0 2px rgba(255,255,255,0.2), 0 0 10px rgba(0,0,0,0.3);
+		}
+		
+		.time-display {
+			font-family: 'Courier New', monospace;
+			font-size: 18px;
+			font-weight: 600;
+			color: var(--accent);
+		}
+		
+		.laps-count {
+			background: rgba(255,107,53,0.1);
+			color: var(--accent);
+			padding: 4px 12px;
+			border-radius: 12px;
+			font-size: 14px;
+			font-weight: 600;
+		}
+		
+		.meta { 
+			color: var(--muted); 
+			font-size: 16px; 
+			margin-top: 8px;
+		}
+		
+		footer { 
+			text-align:center; 
+			padding: 24px; 
+			color: var(--muted); 
+			font-size: 14px; 
+		}
+		
+		footer a {
+			color: var(--accent);
+			text-decoration: none;
+			font-weight: 600;
+			padding: 8px 16px;
+			border-radius: 20px;
+			background: rgba(255,107,53,0.1);
+			border: 1px solid rgba(255,107,53,0.2);
+			transition: all 0.3s ease;
+		}
+		
+		footer a:hover {
+			background: rgba(255,107,53,0.2);
+			transform: translateY(-2px);
+		}
+		
+		/* Responsivo */
+		@media (max-width: 768px) {
+			.podium-container {
+				flex-direction: column;
+				align-items: center;
+				gap: 8px;
+			}
+			.podium-step {
+				order: unset !important;
+			}
+			.podium-base.first { height: 80px; }
+			.podium-base.second { height: 70px; }
+			.podium-base.third { height: 60px; }
+		}
+	</style>
+</head>
+<body>
+	<header class="container">
+		<h1>🏁 Corrida Maluca</h1>
+		<div class="subtitle">Placar em Tempo Real</div>
+		<div class="meta" id="summary"></div>
+	</header>
+	
+	<main class="container">
+		<!-- Pódio -->
+		<div class="podium-container" id="podium">
+			<!-- Será preenchido pelo JavaScript -->
+		</div>
+		
+		<!-- Ranking completo -->
+		<div class="ranking-section">
+			<h2 class="section-title">🏆 Ranking Completo</h2>
+			<div class="panel">
+				<table class="table" id="ranking">
+					<thead>
+						<tr>
+							<th>Posição</th>
+							<th>Carrinho</th>
+							<th>Melhor Tempo</th>
+							<th>Voltas</th>
+						</tr>
+					</thead>
+					<tbody id="ranking-body"></tbody>
+				</table>
+			</div>
+		</div>
+	</main>
+	
+	<footer>
+		<a href="/admin.html">⚙️ Administração</a>
+	</footer>
+	
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+		const socket = io();
+		
+		function formatMs(ms){ 
+			const m=Math.floor(ms/60000); 
+			const s=Math.floor((ms%60000)/1000); 
+			const x=ms%1000; 
+			return m>0?`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(x).padStart(3,'0')}`:`${s}.${String(x).padStart(3,'0')}`; 
+		}
+		
+		function getPositionClass(position) {
+			if (position === 1) return 'first';
+			if (position === 2) return 'second';
+			if (position === 3) return 'third';
+			return 'other';
+		}
+		
+		function renderPodium(ranking) {
+			const podium = document.getElementById('podium');
+			podium.innerHTML = '';
+			
+			const top3 = ranking.slice(0, 3);
+			const positions = ['first', 'second', 'third'];
+			
+			top3.forEach((car, index) => {
+				const step = document.createElement('div');
+				step.className = `podium-step ${positions[index]}`;
+				
+				step.innerHTML = `
+					<div class="podium-position">${car.position}º</div>
+					<div class="podium-car ${positions[index]}" style="background: ${car.color};">
+						🏎️
+					</div>
+					<div class="podium-base ${positions[index]}"></div>
+					<div class="podium-name">${car.name}</div>
+					<div class="podium-time">${formatMs(car.best)}</div>
+				`;
+				
+				podium.appendChild(step);
+			});
+		}
+		
+		function renderRanking(state){
+			const tbody = document.getElementById('ranking-body');
+			tbody.innerHTML = '';
+			
+			(state.ranking || []).forEach(row => {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `
+					<td>
+						<span class="position-badge ${getPositionClass(row.position)}">
+							${row.position}
+						</span>
+					</td>
+					<td>
+						<span class="car-badge">
+							<span class="car-color" style="background:${row.color}"></span>
+							${row.name}
+						</span>
+					</td>
+					<td>
+						<span class="time-display">${formatMs(row.best)}</span>
+					</td>
+					<td>
+						<span class="laps-count">${row.count} voltas</span>
+					</td>
+				`;
+				tbody.appendChild(tr);
+			});
+			
+			document.getElementById('summary').textContent = 
+				`${(state.cars||[]).length} carrinhos · ${(state.ranking||[]).length} no ranking`;
+		}
+		
+		function render(state) {
+			renderPodium(state.ranking || []);
+			renderRanking(state);
+		}
+		
+		socket.on('state:update', render);
+		fetch('/api/state').then(r=>r.json()).then(render);
+	</script>
+</body>
+</html>
+
+

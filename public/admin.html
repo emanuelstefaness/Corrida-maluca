@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Corrida Maluca - Admin</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root { --bg:#0b1020; --panel:#141b34; --muted:#9aa3b2; --accent:#3b82f6; }
+		* { box-sizing: border-box; }
+		body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: linear-gradient(180deg, #0b1020, #0d1226); color:#e6eaf2; }
+		a { color:#9cc1ff; }
+		header { padding: 20px 16px; display:flex; justify-content:space-between; align-items:center; }
+		h1 { margin:0; font-size: clamp(20px, 4vw, 28px); letter-spacing: 0.5px; }
+		.container { max-width: 1100px; margin: 0 auto; padding: 0 16px 32px; }
+		.panel { background: var(--panel); border:1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04); }
+		.grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+		@media (min-width: 860px) { .grid { grid-template-columns: 1fr 1fr; } }
+		label { display:block; font-weight:600; margin-bottom:6px; color:#c7cfdd; }
+		input, button, select { width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); background:#0f1630; color:#e6eaf2; }
+		button { cursor:pointer; background:#2a58c3; border:1px solid #3b6be0; }
+		button:hover { background:#2f63db; }
+		.table { width:100%; border-collapse: collapse; }
+		.table th, .table td { padding: 10px 8px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.06); }
+		.badge { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:rgba(255,255,255,0.06); border-radius:999px; }
+		.color { width:12px; height:12px; border-radius:50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.4); }
+	</style>
+</head>
+<body>
+	<header class="container">
+		<h1>Administração</h1>
+		<div><a href="/">Ver Placar</a></div>
+	</header>
+	<main class="container">
+		<div class="grid">
+			<div class="panel">
+				<h3>Novo Carrinho</h3>
+				<div style="display:grid; gap:10px; grid-template-columns:1fr 120px auto; align-items:end;">
+					<div>
+						<label>Nome</label>
+						<input id="name" placeholder="Ex: Relâmpago" />
+					</div>
+					<div>
+						<label>Cor</label>
+						<input id="color" type="color" value="#ff3b3b" />
+					</div>
+					<div>
+						<button id="addCar">Adicionar</button>
+					</div>
+				</div>
+			</div>
+			<div class="panel">
+				<h3>Registrar Tempo</h3>
+				<div style="display:grid; gap:10px; grid-template-columns:1fr 1fr auto; align-items:end;">
+					<div>
+						<label>Carrinho</label>
+						<select id="carSelect"></select>
+					</div>
+					<div>
+						<label>Tempo (ms ou MM:SS.mmm / SS.mmm)</label>
+						<input id="time" placeholder="Ex: 58.432" />
+					</div>
+					<div>
+						<button id="addTime">Adicionar Tempo</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="panel" style="margin-top:16px;">
+			<h3>Times por Carrinho</h3>
+			<table class="table">
+				<thead>
+					<tr>
+						<th>Carrinho</th>
+						<th>Tempos</th>
+					</tr>
+				</thead>
+				<tbody id="timesTable"></tbody>
+			</table>
+		</div>
+	</main>
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+		const socket = io();
+		let currentState = { cars: [], times: [], ranking: [] };
+		function formatMs(ms){ const m=Math.floor(ms/60000); const s=Math.floor((ms%60000)/1000); const x=ms%1000; return m>0?`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(x).padStart(3,'0')}`:`${s}.${String(x).padStart(3,'0')}`; }
+		function refreshCars(){
+			const sel = document.getElementById('carSelect');
+			sel.innerHTML = '';
+			currentState.cars.forEach(c => {
+				const o = document.createElement('option');
+				o.value = c.id;
+				o.textContent = c.name;
+				sel.appendChild(o);
+			});
+		}
+		function refreshTimes(){
+			const tbody = document.getElementById('timesTable');
+			tbody.innerHTML = '';
+			const map = new Map(currentState.times.map(t=>[t.carId, t.times]));
+			currentState.cars.forEach(c => {
+				const tr = document.createElement('tr');
+				const arr = map.get(c.id) || [];
+				tr.innerHTML = `
+					<td><span class="badge"><span class="color" style="background:${c.color}"></span>${c.name}</span></td>
+					<td>
+						${arr.map((ms, idx)=>`<span style="display:inline-flex; gap:8px; align-items:center; margin:4px 8px 4px 0;">
+							<span>${formatMs(ms)}</span>
+							<button data-car="${c.id}" data-idx="${idx}" class="remove">x</button>
+						</span>`).join('')}
+					</td>`;
+				tbody.appendChild(tr);
+			});
+			document.querySelectorAll('button.remove').forEach(btn=>{
+				btn.onclick = async () => {
+					await fetch(`/api/times/${btn.dataset.car}/${btn.dataset.idx}`, { method: 'DELETE' });
+				};
+			});
+		}
+		function render(state){ currentState = state; refreshCars(); refreshTimes(); }
+		socket.on('state:update', render);
+		fetch('/api/state').then(r=>r.json()).then(render);
+
+		document.getElementById('addCar').onclick = async () => {
+			const name = document.getElementById('name').value.trim();
+			const color = document.getElementById('color').value;
+			if(!name) { alert('Informe um nome'); return; }
+			await fetch('/api/cars', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, color }) });
+			document.getElementById('name').value = '';
+		};
+		document.getElementById('addTime').onclick = async () => {
+			const carId = document.getElementById('carSelect').value;
+			const time = document.getElementById('time').value.trim();
+			if(!carId || !time) { alert('Selecione carrinho e tempo'); return; }
+			const res = await fetch(`/api/times/${carId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ time }) });
+			if (!res.ok) { const j = await res.json().catch(()=>({error:'Erro'})); alert(j.error||'Erro'); return; }
+			document.getElementById('time').value='';
+		};
+	</script>
+</body>
+</html>
+
+
