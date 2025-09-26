@@ -27,20 +27,28 @@ const ADMIN_CREDENTIALS = {
 // Middleware de autenticação
 function requireAuth(req, res, next) {
 	const auth = req.headers.authorization;
+	console.log('🔐 Auth header:', auth ? 'Presente' : 'Ausente');
+	
 	if (!auth) {
+		console.log('❌ Sem credenciais');
 		return res.status(401).json({ error: 'Credenciais necessárias' });
 	}
 	
 	const [type, credentials] = auth.split(' ');
 	if (type !== 'Basic') {
+		console.log('❌ Tipo de auth inválido:', type);
 		return res.status(401).json({ error: 'Tipo de autenticação inválido' });
 	}
 	
 	const [username, password] = Buffer.from(credentials, 'base64').toString().split(':');
+	console.log('👤 Tentativa de login:', username);
+	
 	if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
+		console.log('❌ Credenciais inválidas');
 		return res.status(401).json({ error: 'Credenciais inválidas' });
 	}
 	
+	console.log('✅ Login autorizado');
 	next();
 }
 

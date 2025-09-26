@@ -194,6 +194,12 @@
 			const username = document.getElementById('username').value;
 			const password = document.getElementById('password').value;
 			
+			// Validação básica
+			if (!username || !password) {
+				document.getElementById('loginError').textContent = 'Preencha usuário e senha';
+				return;
+			}
+			
 			setAuth(username, password);
 			
 			// Testar credenciais tentando acessar uma API protegida
@@ -202,10 +208,14 @@
 				if (response.ok) {
 					showMain();
 					document.getElementById('loginError').textContent = '';
+					// Carregar dados após login
+					fetch('/api/state').then(r=>r.json()).then(render);
 				} else {
-					document.getElementById('loginError').textContent = 'Usuário ou senha incorretos';
+					const errorData = await response.json().catch(() => ({}));
+					document.getElementById('loginError').textContent = errorData.error || 'Usuário ou senha incorretos';
 				}
 			} catch (error) {
+				console.error('Erro de login:', error);
 				document.getElementById('loginError').textContent = 'Erro de conexão';
 			}
 		});
