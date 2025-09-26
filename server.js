@@ -18,6 +18,32 @@ const io = new SocketIOServer(server, {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Sistema de login simples
+const ADMIN_CREDENTIALS = {
+	username: 'emanuelstefanes',
+	password: 'corridamaluca2025'
+};
+
+// Middleware de autenticação
+function requireAuth(req, res, next) {
+	const auth = req.headers.authorization;
+	if (!auth) {
+		return res.status(401).json({ error: 'Credenciais necessárias' });
+	}
+	
+	const [type, credentials] = auth.split(' ');
+	if (type !== 'Basic') {
+		return res.status(401).json({ error: 'Tipo de autenticação inválido' });
+	}
+	
+	const [username, password] = Buffer.from(credentials, 'base64').toString().split(':');
+	if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
+		return res.status(401).json({ error: 'Credenciais inválidas' });
+	}
+	
+	next();
+}
+
 // Estado em memória. Em produção, use um banco.
 const state = {
 	cars: new Map(), // id -> { id, name, color }
@@ -130,7 +156,7 @@ app.get('/api/state', (req, res) => {
 	});
 });
 
-app.post('/api/cars', (req, res) => {
+app.post('/api/cars', requireAuth, (req, res) => {
 	const { name, color } = req.body || {};
 	if (!name || typeof name !== 'string') return res.status(400).json({ error: 'Nome inválido' });
 	const id = uuidv4();
@@ -142,7 +168,7 @@ app.post('/api/cars', (req, res) => {
 	res.status(201).json(car);
 });
 
-app.delete('/api/cars/:id', (req, res) => {
+app.delete('/api/cars/:id', requireAuth, (req, res) => {
 	const { id } = req.params;
 	if (!state.cars.has(id)) return res.status(404).json({ error: 'Carrinho não encontrado' });
 	state.cars.delete(id);
@@ -152,7 +178,7 @@ app.delete('/api/cars/:id', (req, res) => {
 	res.json({ ok: true });
 });
 
-app.post('/api/times/:carId', (req, res) => {
+app.post('/api/times/:carId', requireAuth, (req, res) => {
 	const { carId } = req.params;
 	const { time } = req.body || {};
 	if (!state.cars.has(carId)) return res.status(404).json({ error: 'Carrinho não encontrado' });
@@ -166,7 +192,7 @@ app.post('/api/times/:carId', (req, res) => {
 	res.status(201).json({ carId, ms, formatted: formatMs(ms) });
 });
 
-app.delete('/api/times/:carId/:index', (req, res) => {
+app.delete('/api/times/:carId/:index', requireAuth, (req, res) => {
 	const { carId, index } = req.params;
 	if (!state.cars.has(carId)) return res.status(404).json({ error: 'Carrinho não encontrado' });
 	const i = Number(index);

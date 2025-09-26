@@ -26,13 +26,86 @@
 		.table th, .table td { padding: 10px 8px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.06); }
 		.badge { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; background:rgba(255,255,255,0.06); border-radius:999px; }
 		.color { width:12px; height:12px; border-radius:50%; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.4); }
+		
+		/* Estilos do Login */
+		.login-screen {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: linear-gradient(135deg, #0a0e1a, #1a1f2e);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 1000;
+		}
+		
+		.login-container {
+			background: var(--panel);
+			border: 1px solid rgba(255,255,255,0.08);
+			border-radius: 20px;
+			padding: 40px;
+			box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+			width: 100%;
+			max-width: 400px;
+		}
+		
+		.login-container h2 {
+			text-align: center;
+			margin-bottom: 30px;
+			color: #fff;
+			font-size: 24px;
+		}
+		
+		.form-group {
+			margin-bottom: 20px;
+		}
+		
+		.form-group label {
+			display: block;
+			margin-bottom: 8px;
+			color: #c7cfdd;
+			font-weight: 600;
+		}
+		
+		.error-message {
+			color: #ff6b6b;
+			text-align: center;
+			margin-top: 16px;
+			font-size: 14px;
+		}
 	</style>
 </head>
-<body>
-	<header class="container">
-		<h1>Administração</h1>
-		<div><a href="/">Ver Placar</a></div>
-	</header>
+	<body>
+	<!-- Tela de Login -->
+	<div id="loginScreen" class="login-screen">
+		<div class="login-container">
+			<h2>🔐 Acesso Administrativo</h2>
+			<form id="loginForm">
+				<div class="form-group">
+					<label>Usuário</label>
+					<input type="text" id="username" placeholder="Digite seu usuário" required />
+				</div>
+				<div class="form-group">
+					<label>Senha</label>
+					<input type="password" id="password" placeholder="Digite sua senha" required />
+				</div>
+				<button type="submit">Entrar</button>
+			</form>
+			<div id="loginError" class="error-message"></div>
+		</div>
+	</div>
+
+	<!-- Conteúdo Principal (oculto até login) -->
+	<div id="mainContent" style="display: none;">
+		<header class="container">
+			<h1>Administração</h1>
+			<div>
+				<a href="/">Ver Placar</a>
+				<button id="logoutBtn" style="margin-left: 16px; background: #dc3545; border-color: #dc3545;">Sair</button>
+			</div>
+		</header>
 	<main class="container">
 		<div class="grid">
 			<div class="panel">
@@ -82,10 +155,70 @@
 			</table>
 		</div>
 	</main>
+	</div> <!-- Fim do mainContent -->
 	<script src="/socket.io/socket.io.js"></script>
 	<script>
 		const socket = io();
 		let currentState = { cars: [], times: [], ranking: [] };
+		let authToken = null;
+		
+		// Sistema de Login
+		function showLogin() {
+			document.getElementById('loginScreen').style.display = 'flex';
+			document.getElementById('mainContent').style.display = 'none';
+		}
+		
+		function showMain() {
+			document.getElementById('loginScreen').style.display = 'none';
+			document.getElementById('mainContent').style.display = 'block';
+		}
+		
+		function setAuth(username, password) {
+			authToken = 'Basic ' + btoa(username + ':' + password);
+		}
+		
+		function makeAuthenticatedRequest(url, options = {}) {
+			return fetch(url, {
+				...options,
+				headers: {
+					...options.headers,
+					'Authorization': authToken,
+					'Content-Type': 'application/json'
+				}
+			});
+		}
+		
+		// Event Listeners
+		document.getElementById('loginForm').addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const username = document.getElementById('username').value;
+			const password = document.getElementById('password').value;
+			
+			setAuth(username, password);
+			
+			// Testar credenciais tentando acessar uma API protegida
+			try {
+				const response = await makeAuthenticatedRequest('/api/cars');
+				if (response.ok) {
+					showMain();
+					document.getElementById('loginError').textContent = '';
+				} else {
+					document.getElementById('loginError').textContent = 'Usuário ou senha incorretos';
+				}
+			} catch (error) {
+				document.getElementById('loginError').textContent = 'Erro de conexão';
+			}
+		});
+		
+		document.getElementById('logoutBtn').addEventListener('click', () => {
+			authToken = null;
+			showLogin();
+			document.getElementById('username').value = '';
+			document.getElementById('password').value = '';
+		});
+		
+		// Mostrar login inicialmente
+		showLogin();
 		function formatMs(ms){ const m=Math.floor(ms/60000); const s=Math.floor((ms%60000)/1000); const x=ms%1000; return m>0?`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(x).padStart(3,'0')}`:`${s}.${String(x).padStart(3,'0')}`; }
 		function refreshCars(){
 			const sel = document.getElementById('carSelect');
@@ -116,7 +249,7 @@
 			});
 			document.querySelectorAll('button.remove').forEach(btn=>{
 				btn.onclick = async () => {
-					await fetch(`/api/times/${btn.dataset.car}/${btn.dataset.idx}`, { method: 'DELETE' });
+					await makeAuthenticatedRequest(`/api/times/${btn.dataset.car}/${btn.dataset.idx}`, { method: 'DELETE' });
 				};
 			});
 		}
@@ -128,14 +261,14 @@
 			const name = document.getElementById('name').value.trim();
 			const color = document.getElementById('color').value;
 			if(!name) { alert('Informe um nome'); return; }
-			await fetch('/api/cars', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, color }) });
+			await makeAuthenticatedRequest('/api/cars', { method:'POST', body: JSON.stringify({ name, color }) });
 			document.getElementById('name').value = '';
 		};
 		document.getElementById('addTime').onclick = async () => {
 			const carId = document.getElementById('carSelect').value;
 			const time = document.getElementById('time').value.trim();
 			if(!carId || !time) { alert('Selecione carrinho e tempo'); return; }
-			const res = await fetch(`/api/times/${carId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ time }) });
+			const res = await makeAuthenticatedRequest(`/api/times/${carId}`, { method:'POST', body: JSON.stringify({ time }) });
 			if (!res.ok) { const j = await res.json().catch(()=>({error:'Erro'})); alert(j.error||'Erro'); return; }
 			document.getElementById('time').value='';
 		};
