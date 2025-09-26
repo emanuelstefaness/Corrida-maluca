@@ -16,7 +16,27 @@ const io = new SocketIOServer(server, {
 });
 
 app.use(express.json());
+
+// Log de requisições
+app.use((req, res, next) => {
+	console.log(`📡 ${req.method} ${req.url}`);
+	next();
+});
+
+// Servir arquivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Rota específica para admin
+app.get('/admin.html', (req, res) => {
+	console.log('🔧 Servindo admin.html');
+	res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Rota específica para index
+app.get('/', (req, res) => {
+	console.log('🏠 Servindo index.html');
+	res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Sistema de login simples
 const ADMIN_CREDENTIALS = {
